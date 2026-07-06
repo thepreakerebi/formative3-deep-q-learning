@@ -11,8 +11,8 @@ tensorboard/
 runs/
 *.monitor.csv
 
-# Keep the final model tracked, ignore experiment checkpoints
-models/experiments/
+# Local experiment models (the final dqn_model.zip at repo root stays tracked)
+models/
 
 # OS / editor
 .DS_Store
