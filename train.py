@@ -46,10 +46,11 @@ def parse_args() -> argparse.Namespace:
                         help="Final epsilon after annealing")
     parser.add_argument("--epsilon-decay", type=float, default=0.1,
                         help="Fraction of total timesteps over which epsilon is annealed")
-    parser.add_argument("--timesteps", type=int, default=1_000_000,
+    parser.add_argument("--timesteps", type=int, default=500_000,
                         help="Total training timesteps")
-    parser.add_argument("--buffer-size", type=int, default=50_000,
-                        help="Replay buffer size (lower this if RAM is limited)")
+    parser.add_argument("--buffer-size", type=int, default=30_000,
+                        help="Replay buffer size (kept modest: a full buffer of stacked "
+                             "frames can grow to several GB and get the process killed)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--save-as", default="dqn_model.zip",
                         help="Path for the saved model (assignment requires dqn_model.zip)")
