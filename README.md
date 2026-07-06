@@ -11,6 +11,14 @@ Training and evaluating a Deep Q-Network (DQN) agent on Atari Pong using
 - Glory Paul
 - Leny Pascal
 
+## Environment
+
+[`ALE/Pong-v5`](https://ale.farama.org/environments/pong/) — the agent controls
+the right paddle; reward is **+1** for each point scored and **−1** for each
+point conceded (first to 21). Observations are raw RGB frames, preprocessed by
+the standard Atari pipeline (grayscale, 84×84 resize, 4-frame stack) so the
+network can perceive ball velocity.
+
 ## Setup
 
 ```bash
@@ -19,21 +27,102 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Usage
+## Training (`train.py`)
 
-Train (hyperparameters are CLI-configurable — see `python train.py --help`):
+All assignment hyperparameters are CLI flags, so every team member runs their
+tuning experiments with the same script:
 
 ```bash
-python train.py --policy CnnPolicy --lr 1e-4 --gamma 0.99 --batch-size 32 \
-  --epsilon-start 1.0 --epsilon-end 0.01 --epsilon-decay 0.1 --timesteps 1000000
+python train.py --run-name elvis-exp1 --policy CnnPolicy \
+  --lr 1e-4 --gamma 0.99 --batch-size 32 \
+  --epsilon-start 1.0 --epsilon-end 0.01 --epsilon-decay 0.1 \
+  --timesteps 200000
 ```
 
-Play with the trained agent (greedy Q policy, GUI rendering):
+- Saves the trained model as **`dqn_model.zip`** (`--save-as` to override).
+- Logs **reward trends** and **episode lengths** to `logs/<run-name>/monitor/`
+  (CSV) and TensorBoard (`rollout/ep_rew_mean`, `rollout/ep_len_mean`).
+- Writes the exact config of each run to `logs/<run-name>/config.json` for the
+  experiment table.
+
+### MLP vs CNN policy
+
+| Policy | Result |
+|---|---|
+| `CnnPolicy` | _to be filled after comparison runs_ |
+| `MlpPolicy` | _to be filled after comparison runs_ |
+
+_Discussion of which policy performs better on Pong and why: to be added._
+
+## Playing (`play.py`)
 
 ```bash
 python play.py --model dqn_model.zip --episodes 3
 ```
 
-_Full documentation (hyperparameter experiment tables, results discussion, and
-gameplay video) is added as the project progresses — see TEAM_TASKS.md for the
-work plan._
+Loads `dqn_model.zip`, recreates the same environment/preprocessing as
+training with `render_mode="human"` (GUI display), and selects actions with
+the **greedy Q policy** (`deterministic=True` — always the highest Q-value
+action, no exploration).
+
+## Gameplay Video
+
+_Video of the agent playing (play.py running with the agent interacting with
+the environment) — to be added._
+
+## Hyperparameter Tuning Experiments
+
+Each member ran 10 experiments. Epsilon maps to SB3 as: `epsilon_start` →
+`exploration_initial_eps`, `epsilon_end` → `exploration_final_eps`,
+`epsilon_decay` → `exploration_fraction`.
+
+### MEMBER NAME: Elvis Preye Kerebi
+
+| # | Hyperparameter Set | Noted Behavior |
+|---|---|---|
+| 1 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 2 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 3 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 4 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 5 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 6 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 7 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 8 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 9 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 10 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+
+### MEMBER NAME: Glory Paul
+
+| # | Hyperparameter Set | Noted Behavior |
+|---|---|---|
+| 1 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 2 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 3 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 4 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 5 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 6 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 7 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 8 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 9 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 10 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+
+### MEMBER NAME: Leny Pascal
+
+| # | Hyperparameter Set | Noted Behavior |
+|---|---|---|
+| 1 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 2 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 3 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 4 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 5 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 6 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 7 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 8 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 9 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 10 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+
+## Results Discussion
+
+_Discussion of the hyperparameter tuning results based on the tables above
+(which changes improved performance, which harmed it, and the best final
+configuration) — to be added once experiments are complete._
