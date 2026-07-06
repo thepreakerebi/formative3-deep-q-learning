@@ -21,6 +21,7 @@ from pathlib import Path
 import ale_py
 import gymnasium as gym
 from stable_baselines3 import DQN
+from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.env_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
 
@@ -99,9 +100,17 @@ def main() -> None:
         verbose=1,
     )
 
+    # Periodic checkpoints so an interrupted run can be resumed or salvaged
+    # instead of losing all progress (the final save only happens at the end).
+    checkpoint = CheckpointCallback(
+        save_freq=50_000,
+        save_path=str(log_dir / "checkpoints"),
+        name_prefix="dqn",
+    )
+
     # Reward trends and episode lengths are logged to the monitor CSVs and
     # TensorBoard (rollout/ep_rew_mean, rollout/ep_len_mean).
-    model.learn(total_timesteps=args.timesteps, progress_bar=True)
+    model.learn(total_timesteps=args.timesteps, progress_bar=True, callback=checkpoint)
 
     model.save(args.save_as)
     print(f"\nModel saved to {args.save_as}")
