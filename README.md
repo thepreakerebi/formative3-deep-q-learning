@@ -49,8 +49,8 @@ python train.py --run-name elvis-exp1 --policy CnnPolicy \
 
 | Policy | Result |
 |---|---|
-| `CnnPolicy` | _to be filled after comparison runs_ |
-| `MlpPolicy` | _to be filled after comparison runs_ |
+| `CnnPolicy` | Baseline (exp 1): −20.7 → −17.7 mean reward over 500k steps, stable learning curve |
+| `MlpPolicy` | _to be filled after comparison run_ |
 
 _Discussion of which policy performs better on Pong and why: to be added._
 
@@ -80,7 +80,7 @@ Each member ran 10 experiments. Epsilon maps to SB3 as: `epsilon_start` →
 
 | # | Hyperparameter Set | Noted Behavior |
 |---|---|---|
-| 1 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 1 | lr=1e-4, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (baseline, CnnPolicy, 500k steps) | Flat at −20.7 for the first ~200k steps (exploration + replay warm-up), then steady learning: −19.5 by 300k, −17.7 mean by 500k with best episode −13. Episode length grew 3.5k→8.3k frames (rallies ~2.4× longer). Stable, no divergence; reward still climbing at cutoff, so longer training would keep improving. |
 | 2 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 | 3 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 | 4 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
