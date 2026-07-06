@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Training artifacts
+logs/
+tensorboard/
+runs/
+*.monitor.csv
+
+# Keep the final model tracked, ignore experiment checkpoints
+models/experiments/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
