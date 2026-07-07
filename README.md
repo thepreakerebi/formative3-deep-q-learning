@@ -49,8 +49,14 @@ python train.py --run-name elvis-exp1 --policy CnnPolicy \
 
 | Policy | Result |
 |---|---|
-| `CnnPolicy` | Baseline (exp 1): −20.7 → −17.7 mean reward over 500k steps, stable learning curve |
-| `MlpPolicy` | _to be filled after comparison run_ |
+| `CnnPolicy` | Learns reliably: −20.7 → −17.7 (baseline config, exp 1); −13.9 at the tuned config (exp 3) |
+| `MlpPolicy` | Never learns: flat −20.7 → −21.0 over 500k steps at the same tuned config (exp 9) |
+
+**Why:** the MLP flattens the 84×84×4 stacked frames into a ~28k-dimensional vector, discarding
+all spatial structure. The CNN's convolutions detect the ball and paddles as local patterns
+wherever they appear on screen (translation invariance) and the frame stack gives it motion —
+without that prior, raw pixels are unlearnable noise at this scale. MlpPolicy is only viable for
+low-dimensional state inputs (e.g., RAM observations), never for pixels.
 
 _Discussion of which policy performs better on Pong and why: to be added._
 
@@ -88,7 +94,7 @@ Each member ran 10 experiments. Epsilon maps to SB3 as: `epsilon_start` →
 | 6 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=**0.02** (CnnPolicy, 500k steps) | Second-best run. Minimal exploration (ε floors at 10k steps) did not prevent learning but delayed it: tracked ~60–80k steps behind exp 3's curve throughout, finishing at −15.5 in the final segment (best −10) vs exp 3's −13.9 — still climbing steeply at cutoff (episode length hit 12k frames, the longest of any run). Together with exps 3/5 this brackets the epsilon axis: 0.02 costs a delayed takeoff, 0.3 costs ~4 points, 0.1 is the sweet spot. Epsilon errors degrade gracefully — unlike lr errors, which are catastrophic. |
 | 7 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=**0.05** (CnnPolicy, 500k steps) | Surprisingly the weakest of the three epsilon variants (−18.5 final) despite sitting between two stronger configs (0.02 → −15.5, 0.1 → −13.9): very late breakout (~250k), climbed to −18.2 by 400k, then plateaued/regressed slightly (−18.7). Since a smooth epsilon landscape can't produce a dip between two peaks, the most plausible reading is **run-to-run variance** — breakout timing is partly luck, and a single 500k run per config can't fully separate schedule effects from noise. A key methodological caveat for interpreting all single-run results in this table. |
 | 8 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=**0.1**, epsilon_decay=0.1 (CnnPolicy, 500k steps) | Chosen to test whether exp 5's harm came from anneal length or from randomness itself: a permanent 10% random-action floor. Prediction confirmed — earlier breakout than most runs (−19.6 by 200k, continued exploration keeps the buffer diverse) but a **capped ceiling**: final −17.7 vs −13.9 for the identical config with a 1% floor. With ε=0.1 forever, ~1 in 10 actions is random even when the network knows better — a persistent tax in a game where one missed ball costs a point. Confirms exploration should be front-loaded, then minimized. |
-| 9 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 9 | **MlpPolicy**, lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (500k steps) | The required MLP vs CNN comparison, run at the champion config so the gap isolates architecture. Total failure: flat at −20.7 and drifting to −21.0 by the end (worse than random), episode length shrinking. The MLP flattens the 84×84×4 frame stack into a ~28k-dim vector, destroying the spatial structure (ball/paddle positions and motion) that a CNN's convolutions exploit — with no spatial prior, the pixel input is unlearnable noise at this scale. Also trained ~6× faster (749 vs ~130 it/s): cheap and useless. Verdict: **CnnPolicy is mandatory for pixel observations.** |
 | 10 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 
 ### MEMBER NAME: Glory Paul
