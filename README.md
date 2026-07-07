@@ -81,7 +81,7 @@ Each member ran 10 experiments. Epsilon maps to SB3 as: `epsilon_start` →
 | # | Hyperparameter Set | Noted Behavior |
 |---|---|---|
 | 1 | lr=1e-4, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (baseline, CnnPolicy, 500k steps) | Flat at −20.7 for the first ~200k steps (exploration + replay warm-up), then steady learning: −19.5 by 300k, −17.7 mean by 500k with best episode −13. Episode length grew 3.5k→8.3k frames (rallies ~2.4× longer). Stable, no divergence; reward still climbing at cutoff, so longer training would keep improving. |
-| 2 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 2 | lr=**2.5e-4**, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (CnnPolicy, 500k steps) | Complete failure to learn: mean reward flat at −20.9 across all 500k steps, best episode only −20 after 100k, episode length stuck at ~3.2k frames (vs baseline's growth to 8.3k). The 2.5× higher lr destabilized Q-value bootstrapping — updates chase a moving target and no coherent policy forms. Slightly worse than random by the end (degenerate policy). Conclusion: lr is the most sensitive knob so far; viable range is at or below ~1e-4. |
 | 3 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 | 4 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 | 5 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
