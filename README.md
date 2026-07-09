@@ -101,16 +101,18 @@ Each member ran 10 experiments. Epsilon maps to SB3 as: `epsilon_start` →
 
 | # | Hyperparameter Set | Noted Behavior |
 |---|---|---|
-| 1 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 2 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 3 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 4 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 5 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 1 | lr=5e-5, gamma=0.90, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (CnnPolicy, 500k steps) | Mean reward -16.70, mean episode length 8055 steps. Lowest gamma in the sweep — reward still well below Elvis's gamma=0.99 baseline (-13.9), showing that discounting future reward too heavily hurts Pong, where scoring requires a longer sequence of correct paddle moves. |
+| 2 | lr=5e-5, gamma=0.95, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (CnnPolicy, 500k steps) | Mean reward -15.92, mean episode length 7379 steps. Improvement over gamma=0.90, confirming higher gamma helps the agent value delayed reward more accurately. |
+| 3 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (CnnPolicy, 500k steps) | **Best result in the gamma sweep** — mean reward -15.65, mean episode length 7056 steps. Same hyperparameters as Elvis's exp3, but landed at -15.65 vs his -13.9, illustrating run-to-run variance from random seeding rather than a hyperparameter effect. |
+| 4 | lr=5e-5, gamma=0.995, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (CnnPolicy, 500k steps) | Mean reward -17.44, mean episode length 8724 steps. Trend reverses here — worse than gamma=0.99 despite the longest episode length in the sweep. Pushing gamma this close to 1.0 makes bootstrapped Q-targets noisier and harder to fit within 500k steps. |
+| 5 | lr=5e-5, gamma=0.999, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 (CnnPolicy, 500k steps) | Mean reward -19.81, mean episode length 5176 steps. Sharp drop-off — worst result in the sweep. At gamma this close to 1.0 the effective planning horizon becomes too long to converge reliably in 500k steps. Confirms gamma=0.99 (exp3) as the clear optimum. |
 | 6 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 | 7 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 | 8 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 | 9 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
 | 10 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+
+**Gamma sweep summary:** Reward followed a clear inverted-U pattern across gamma values (0.90 → 0.95 → 0.99 → 0.995 → 0.999), peaking at **gamma=0.99** with mean reward -15.65. This value is locked in for the batch_size sweep (experiments 6-10, to follow).
 
 ### MEMBER NAME: Leny Pascal
 
