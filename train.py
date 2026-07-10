@@ -51,7 +51,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--buffer-size", type=int, default=30_000,
                         help="Replay buffer size (kept modest: a full buffer of stacked "
                              "frames can grow to several GB and get the process killed)")
+    parser.add_argument("--train-freq", type=int, default=4,
+                        help="Environment steps between each gradient update")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--device", default="auto",
+                        help="Torch device (auto/cpu/mps/cuda). SB3's auto never picks "
+                             "Apple's MPS, so pass --device mps on Apple Silicon")
     parser.add_argument("--save-as", default="dqn_model.zip",
                         help="Path for the saved model (assignment requires dqn_model.zip)")
     return parser.parse_args()
@@ -93,11 +98,12 @@ def main() -> None:
         exploration_fraction=args.epsilon_decay,
         buffer_size=args.buffer_size,
         learning_starts=10_000,
-        train_freq=4,
+        train_freq=args.train_freq,
         target_update_interval=1_000,
         optimize_memory_usage=False,
         tensorboard_log=str(log_dir / "tensorboard"),
         seed=args.seed,
+        device=args.device,
         verbose=1,
     )
 
