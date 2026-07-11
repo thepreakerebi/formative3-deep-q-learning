@@ -86,10 +86,14 @@ run was still improving at the 500k cutoff.
 
 ## Gameplay Video
 
-**[▶ gameplay.mp4](gameplay.mp4)** — screen recording of `play.py` running the
-final model (`python play.py --model dqn_model.zip --episodes 3`): the GUI
-window rendering in real time with the agent (green paddle, right side)
-playing greedily.
+![DQN agent playing Pong](gameplay.gif)
+
+*The agent (green paddle, right side) playing greedily in real time — 22-second
+highlight. Full recording: **[gameplay.mp4](gameplay.mp4)** (open "Raw" or
+download to play; GitHub does not preview committed video files).*
+
+Recorded with `python play.py --model dqn_model.zip --episodes 3` — the GUI
+window rendered by `env.render()` via `render_mode="human"`.
 
 Result from the recorded session: **Episode 1: reward +18 over 1,932 steps** —
 the agent won **21–3** (episode reward = points scored minus points conceded,
