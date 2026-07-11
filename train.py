@@ -59,6 +59,10 @@ def parse_args() -> argparse.Namespace:
                              "Apple's MPS, so pass --device mps on Apple Silicon")
     parser.add_argument("--save-as", default="dqn_model.zip",
                         help="Path for the saved model (assignment requires dqn_model.zip)")
+    parser.add_argument("--resume-from", default=None,
+                        help="Checkpoint .zip to resume from. Trains --timesteps ADDITIONAL "
+                             "steps (replay buffer is not saved in checkpoints, so it refills "
+                             "during the first learning_starts steps of the resumed run)")
     return parser.parse_args()
 
 
@@ -87,25 +91,32 @@ def main() -> None:
 
     env = make_env(args.seed, str(log_dir / "monitor"))
 
-    model = DQN(
-        args.policy,
-        env,
-        learning_rate=args.lr,
-        gamma=args.gamma,
-        batch_size=args.batch_size,
-        exploration_initial_eps=args.epsilon_start,
-        exploration_final_eps=args.epsilon_end,
-        exploration_fraction=args.epsilon_decay,
-        buffer_size=args.buffer_size,
-        learning_starts=10_000,
-        train_freq=args.train_freq,
-        target_update_interval=1_000,
-        optimize_memory_usage=False,
-        tensorboard_log=str(log_dir / "tensorboard"),
-        seed=args.seed,
-        device=args.device,
-        verbose=1,
-    )
+    if args.resume_from:
+        # Continue a previous run: restores weights, optimizer state, and the
+        # step counter. Long single processes have twice been killed by the OS
+        # around the 90-minute mark, so long trainings run as chunked resumes.
+        model = DQN.load(args.resume_from, env=env, device=args.device)
+        model.tensorboard_log = str(log_dir / "tensorboard")
+    else:
+        model = DQN(
+            args.policy,
+            env,
+            learning_rate=args.lr,
+            gamma=args.gamma,
+            batch_size=args.batch_size,
+            exploration_initial_eps=args.epsilon_start,
+            exploration_final_eps=args.epsilon_end,
+            exploration_fraction=args.epsilon_decay,
+            buffer_size=args.buffer_size,
+            learning_starts=10_000,
+            train_freq=args.train_freq,
+            target_update_interval=1_000,
+            optimize_memory_usage=False,
+            tensorboard_log=str(log_dir / "tensorboard"),
+            seed=args.seed,
+            device=args.device,
+            verbose=1,
+        )
 
     # Periodic checkpoints so an interrupted run can be resumed or salvaged
     # instead of losing all progress (the final save only happens at the end).
@@ -117,7 +128,14 @@ def main() -> None:
 
     # Reward trends and episode lengths are logged to the monitor CSVs and
     # TensorBoard (rollout/ep_rew_mean, rollout/ep_len_mean).
-    model.learn(total_timesteps=args.timesteps, progress_bar=True, callback=checkpoint)
+    # With --resume-from, reset_num_timesteps=False keeps the global step count
+    # so checkpoint numbering and epsilon schedule continue where they left off.
+    model.learn(
+        total_timesteps=args.timesteps,
+        progress_bar=True,
+        callback=checkpoint,
+        reset_num_timesteps=args.resume_from is None,
+    )
 
     model.save(args.save_as)
     print(f"\nModel saved to {args.save_as}")
