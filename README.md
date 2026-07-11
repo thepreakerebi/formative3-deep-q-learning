@@ -69,10 +69,15 @@ training with `render_mode="human"` (GUI display), and selects actions with
 the **greedy Q policy** (`deterministic=True` — always the highest Q-value
 action, no exploration).
 
-`dqn_model.zip` is always the group's best model so far. Currently that is
-Leny's exp 5 (lr=5e-5, gamma=0.99, batch=128: mean reward -10.2 at 500k steps,
-best episode +9), which overtook Elvis's exp 3 (-13.9, kept as
-`models/elvis-champion.zip`).
+`dqn_model.zip` is the group's **final model**: the champion configuration from
+the 30-experiment study (CnnPolicy, lr=5e-5, gamma=0.99, batch=128, epsilon
+1.0→0.01 over the first 50k steps) trained to 2.1M timesteps, shipping the best
+checkpoint (1.7M steps, selected by greedy evaluation: **mean +16.0 over held-out
+episodes, winning 21–3, 21–2, 21–6, 21–9**). Training reward crossed zero around
+550k steps, plateaued at +10 to +13 past 1M, and included 21–0 shutouts. This
+supersedes the 500k-step study models (Leny's exp 5, −10.2, was the best of
+those) — same configuration, simply trained ~3.4× longer, confirming the study's
+prediction that every healthy run was still improving at the 500k cutoff.
 
 ## Gameplay Video
 
