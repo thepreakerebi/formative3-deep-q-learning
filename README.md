@@ -58,8 +58,6 @@ wherever they appear on screen (translation invariance) and the frame stack give
 without that prior, raw pixels are unlearnable noise at this scale. MlpPolicy is only viable for
 low-dimensional state inputs (e.g., RAM observations), never for pixels.
 
-_Discussion of which policy performs better on Pong and why: to be added._
-
 ## Playing (`play.py`)
 
 ```bash
@@ -70,6 +68,11 @@ Loads `dqn_model.zip`, recreates the same environment/preprocessing as
 training with `render_mode="human"` (GUI display), and selects actions with
 the **greedy Q policy** (`deterministic=True` — always the highest Q-value
 action, no exploration).
+
+`dqn_model.zip` is always the group's best model so far. Currently that is
+Leny's exp 5 (lr=5e-5, gamma=0.99, batch=128: mean reward -10.2 at 500k steps,
+best episode +9), which overtook Elvis's exp 3 (-13.9, kept as
+`models/elvis-champion.zip`).
 
 ## Gameplay Video
 
@@ -118,21 +121,83 @@ Each member ran 10 experiments. Epsilon maps to SB3 as: `epsilon_start` →
 
 ### MEMBER NAME: Leny Pascal
 
+My experiments take Elvis's winning config (lr=5e-5, gamma=0.99, batch=32, final
+reward -13.9) as the starting point and probe the axes he did not touch: gamma
+(exps 1-3), batch size (exps 4-6), epsilon_start (exp 7), the lr x batch
+interaction (exp 8) and train_freq (exps 9-10). All runs use CnnPolicy, 500k
+steps, seed 42 on ALE/Pong-v5.
+
 | # | Hyperparameter Set | Noted Behavior |
 |---|---|---|
-| 1 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 2 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 3 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 4 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 5 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 6 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 7 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 8 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 9 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
-| 10 | lr= , gamma= , batch= , epsilon_start= , epsilon_end= , epsilon_decay= | |
+| 1 | lr=5e-5, **gamma=0.95**, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | Shortening the horizon still learns, just not as well: flat until ~250k, then -19.4 at 300k, -17.5 at 400k, final -16.3 (best episode -10). Episode length grew 3.6k to 8.1k frames. With gamma=0.95 the agent effectively looks ~20 decisions ahead, which covers a Pong rally, so credit assignment still works. It simply ends about 2.4 points behind the gamma=0.99 reference. Verdict: 0.95 is usable but costs performance for no benefit here. |
+| 2 | lr=5e-5, **gamma=0.90**, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | The surprise of the gamma sweep: an even shorter horizon (~10 decisions) beat 0.95, moving earlier (-20.0 at 200k, -18.6 at 300k) and finishing at -15.5 with best episode -8. My read: in Pong the reward lands within a few decisions of the paddle contact that caused it, so a short horizon gives cleaner, lower-variance targets and loses little relevant information. Still 1.6 points short of gamma=0.99, so the ordering over the whole sweep is 0.99 > 0.90 > 0.95 > 0.997. |
+| 3 | lr=5e-5, **gamma=0.997**, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | Worst of the gamma sweep. Pushing gamma toward 1 (~330 decision horizon) made value targets much harder to estimate: still stuck at -20.3 at 300k when the reference config had already reached -16.3, and only limped to -18.6 by cutoff (best episode -14). Bootstrapped Q-targets accumulate noise over the long horizon and every update chases a high-variance estimate. Clear one-sided result: for a game where points resolve quickly, a near-1 gamma just slows learning down at this budget. |
+| 4 | lr=5e-5, gamma=0.99, **batch=64**, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | Odd middle case. Earliest mover of my first wave (-20.3 at 100k, -19.2 by 200k) but then progress went shallow, ending -17.9 (best -9), behind the batch=32 reference at -13.9. Taken alone this says doubling the batch hurts, but exp 5 (batch=128) strongly disagrees, so the batch curve is non-monotonic across 16/32/64/128 on single runs. I trust the endpoints and treat this middle ranking as within run-to-run noise, the same caveat Elvis hit in his exp 7. |
+| 5 | lr=5e-5, gamma=0.99, **batch=128**, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | Best run of the whole group study. Averaging 128 transitions per update cut gradient variance enough to change the curve shape entirely: already moving at 100k (-20.0), then -17.4 at 200k, -14.8 at 300k, -11.9 at 400k, final -10.2 with the last 20 episodes averaging -8.8. Best single episode was **+9, the first outright win against the built-in AI in the study** (21-12). Bonus: on Apple Silicon the larger batch was nearly free, same ~24 min wall time as batch=32. New champion config. |
+| 6 | lr=5e-5, gamma=0.99, **batch=16**, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | Confirms the other end of the batch axis: 16-sample gradient estimates are too noisy to make steady progress. Flat at -20.8 through 200k, -20.6 at 300k, final -19.3 (best episode only -14), the weakest run of my eight alongside exp 3. Interesting detail: it played the most episodes of my wave (459) because games stayed short, meaning it kept losing quickly rather than learning to rally. Together with exps 4-5 the practical rule is: below 32 is harmful, 128 is where the real gain shows up. |
+| 7 | lr=5e-5, gamma=0.99, batch=32, **epsilon_start=0.5**, epsilon_end=0.01, epsilon_decay=0.1 | Tests whether the standard "start fully random" recipe is actually necessary. Halving initial exploration degraded things mildly: same curve shape as the reference but consistently behind (-18.6 at 300k vs -16.3, final -16.6 vs -13.9, best -10). With less early randomness the replay buffer starts less diverse, so the agent commits sooner to a narrower slice of experience. Consistent with Elvis's epsilon findings: exploration mistakes degrade gracefully, unlike lr mistakes. Not worth it, keep epsilon_start=1.0. |
+| 8 | **lr=1e-4**, gamma=0.99, **batch=64**, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | Interaction probe: bigger batches smooth gradients, so can they buy back tolerance for a hotter lr? Mostly yes. At batch=32 Elvis measured lr=1e-4 costing ~4 points vs 5e-5 (-17.7 vs -13.9). At batch=64 the same lr doubling cost roughly nothing: -17.4 here vs -17.9 for exp 4 (identical config at lr=5e-5), with the longest episodes of my wave (9.7k frames) and best episode -8. Takeaway: batch size and lr are coupled, and lr sensitivity is partly a gradient-noise problem. It does not rescue batch=64 overall, but it demonstrates the mechanism. |
+| 9 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1, **train_freq=1** | A gradient update on every environment step, 4x the baseline's update count. Sample efficiency clearly improved: -18.1 at 200k steps where the baseline was still at -19.5, with healthy 7.1k-frame episodes. The catch is wall-clock cost: throughput dropped from ~500 fps to under 30 on the M5 GPU because every step now waits on a backprop pass, and the first attempt had to be restarted after the laptop slept mid-run. More learning per frame, much less learning per hour. On a fixed step budget it helps; on a fixed time budget train_freq=4 wins by a wide margin. _(rerun to full 500k in progress, final numbers to follow)_ |
+| 10 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1, **train_freq=8** | The other half of the train_freq sweep: updating only every 8th step halves the total gradient updates (62.5k vs the baseline's 125k) and the agent pays for it. Very late breakout, -20.4 at 200k, -19.7 at 300k, crawling to -18.7 at cutoff with best episode -13 and the shortest average games of my runs (4.6k frames). Nothing diverged, it just learned half as much from the same experience. Together with exp 9 this brackets the axis: update frequency trades wall-clock time for sample efficiency, and the SB3 default of 4 sits in a sensible spot. |
 
 ## Results Discussion
 
-_Discussion of the hyperparameter tuning results based on the tables above
-(which changes improved performance, which harmed it, and the best final
-configuration) — to be added once experiments are complete._
+Across 20 runs (Elvis 10, Leny 10, all 500k steps on ALE/Pong-v5 with
+CnnPolicy unless stated otherwise), the knobs ranked very differently in how
+much they matter and how badly they punish mistakes.
+
+**Learning rate is the most dangerous knob.** Elvis's exps 1-4 traced a clean
+U-shape: 2.5e-4 never learns at all (flat at -20.9, worse than random by the
+end), 1e-4 works, 5e-5 is best, and 2.5e-5 learns the same curve but too
+slowly to converge in budget. It is the only hyperparameter where a wrong
+setting produced total failure rather than degraded performance. Leny's exp 8
+added a nuance: at batch=64 the lr=1e-4 penalty mostly disappears, so lr
+sensitivity is partly a gradient-noise problem and bigger batches buy back
+some tolerance.
+
+**Batch size gave the single biggest improvement.** Going from 32 to 128
+(Leny exp 5) turned the group's best result from -13.9 into -10.2, with the
+study's first outright wins against the built-in AI (best episode +9, and +8
+in greedy evaluation). Averaging more transitions per update smooths the
+gradient, and on Apple Silicon the larger batch cost almost no extra wall
+time. Batch=16 (exp 6) confirmed the other direction: too noisy to make
+steady progress. The middle of the curve (64) ranked oddly below 32 on a
+single run, which we attribute to run-to-run variance rather than a real dip.
+
+**Gamma should match the game's reward delay.** Pong resolves each point
+within a few decisions, so 0.99 is comfortably enough horizon. Shortening it
+degrades gracefully (0.90 lost 1.6 points, 0.95 lost 2.4), but stretching it
+to 0.997 (Leny exp 3) made bootstrapped targets so noisy that learning nearly
+stalled. Interestingly 0.90 beat 0.95, likely because shorter horizons give
+lower-variance targets and Pong's rewards arrive quickly anyway.
+
+**Exploration should be front-loaded, then minimized.** The epsilon sweep
+(Elvis exps 5-8, Leny exp 7) consistently degraded gracefully: annealing too
+long floods the buffer with random experience (-18.0), a permanent 10% random
+floor caps the ceiling (-17.7), starting at 0.5 instead of 1.0 costs about 3
+points. The default schedule (1.0 to 0.01 over the first 10% of training) was
+never beaten.
+
+**Update frequency trades wall-clock for sample efficiency.** Updating every
+step (Leny exp 9) was ahead of the baseline at equal step counts but ran
+roughly 20x slower in real time; updating every 8th step (exp 10) halved the
+update count and clearly under-trained (-18.7). The SB3 default of 4 is a
+sensible compromise on both axes.
+
+**CNN vs MLP is not a close call.** MlpPolicy at the otherwise-best config
+(Elvis exp 9) stayed at random-play level for all 500k steps. Convolutions
+are what let the agent find the ball and paddles in pixel input; without that
+spatial prior there is nothing to tune.
+
+**Final configuration:** lr=5e-5, gamma=0.99, batch=128, epsilon 1.0 to 0.01
+over 10% of training, train_freq=4, CnnPolicy. Mean training reward -10.2 at
+500k steps, winning individual games under greedy evaluation. This is the
+model shipped as `dqn_model.zip`. Reward was still climbing at cutoff for
+every healthy run, so the clearest path to a stronger agent is simply more
+steps at this exact configuration.
+
+**Methodological caveat:** every cell in the tables is a single seed.
+Elvis's exp 10 reran the then-champion on a second seed and matched it almost
+exactly (-13.8 vs -13.9), which gives some confidence, but oddities like the
+batch=64 dip and Elvis's epsilon_decay=0.05 anomaly are reminders that
+breakout timing is partly luck at this budget.
