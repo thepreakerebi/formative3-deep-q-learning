@@ -86,8 +86,14 @@ run was still improving at the 500k cutoff.
 
 ## Gameplay Video
 
-_Video of the agent playing (play.py running with the agent interacting with
-the environment) — to be added._
+**[▶ gameplay.mp4](gameplay.mp4)** — screen recording of `play.py` running the
+final model (`python play.py --model dqn_model.zip --episodes 3`): the GUI
+window rendering in real time with the agent (green paddle, right side)
+playing greedily.
+
+Result from the recorded session: **Episode 1: reward +18 over 1,932 steps** —
+the agent won **21–3** (episode reward = points scored minus points conceded,
+so 21 − 3 = +18), consistent with the model's +16.0 held-out evaluation mean.
 
 ## Hyperparameter Tuning Experiments
 

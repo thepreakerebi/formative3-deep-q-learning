@@ -21,3 +21,6 @@ models/
 
 # Team-internal planning docs stay local
 TEAM_TASKS.md
+
+# Raw screen recordings (compressed .mp4 is committed instead)
+*.mov
