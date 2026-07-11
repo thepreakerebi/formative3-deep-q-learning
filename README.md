@@ -70,9 +70,11 @@ the **greedy Q policy** (`deterministic=True` — always the highest Q-value
 action, no exploration).
 
 `dqn_model.zip` is always the group's best model so far. Currently that is
-Leny's exp 5 (lr=5e-5, gamma=0.99, batch=128: mean reward -10.2 at 500k steps,
-best episode +9), which overtook Elvis's exp 3 (-13.9, kept as
-`models/elvis-champion.zip`).
+Leny's exp 9 (lr=5e-5, gamma=0.99, batch=32, train_freq=1: mean reward -8.45
+at 500k steps, last 20 training episodes averaging -0.3, best episode +9).
+Under greedy evaluation it won 2 of 3 episodes (-3, +6, +7). It overtook
+Leny's own exp 5 (-10.2, kept as `models/leny-exp5.zip`), which had earlier
+overtaken Elvis's exp 3 (-13.9, kept as `models/elvis-champion.zip`).
 
 ## Gameplay Video
 
@@ -133,7 +135,7 @@ steps, seed 42 on ALE/Pong-v5.
 | 6 | lr=5e-5, gamma=0.99, **batch=16**, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | Confirms the other end of the batch axis: 16-sample gradient estimates are too noisy to make steady progress. Flat at -20.8 through 200k, -20.6 at 300k, final -19.3 (best episode only -14), the weakest run of my eight alongside exp 3. Interesting detail: it played the most episodes of my wave (459) because games stayed short, meaning it kept losing quickly rather than learning to rally. Together with exps 4-5 the practical rule is: below 32 is harmful, 128 is where the real gain shows up. |
 | 7 | lr=5e-5, gamma=0.99, batch=32, **epsilon_start=0.5**, epsilon_end=0.01, epsilon_decay=0.1 | Tests whether the standard "start fully random" recipe is actually necessary. Halving initial exploration degraded things mildly: same curve shape as the reference but consistently behind (-18.6 at 300k vs -16.3, final -16.6 vs -13.9, best -10). With less early randomness the replay buffer starts less diverse, so the agent commits sooner to a narrower slice of experience. Consistent with Elvis's epsilon findings: exploration mistakes degrade gracefully, unlike lr mistakes. Not worth it, keep epsilon_start=1.0. |
 | 8 | **lr=1e-4**, gamma=0.99, **batch=64**, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1 | Interaction probe: bigger batches smooth gradients, so can they buy back tolerance for a hotter lr? Mostly yes. At batch=32 Elvis measured lr=1e-4 costing ~4 points vs 5e-5 (-17.7 vs -13.9). At batch=64 the same lr doubling cost roughly nothing: -17.4 here vs -17.9 for exp 4 (identical config at lr=5e-5), with the longest episodes of my wave (9.7k frames) and best episode -8. Takeaway: batch size and lr are coupled, and lr sensitivity is partly a gradient-noise problem. It does not rescue batch=64 overall, but it demonstrates the mechanism. |
-| 9 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1, **train_freq=1** | A gradient update on every environment step, 4x the baseline's update count. Sample efficiency clearly improved: -18.1 at 200k steps where the baseline was still at -19.5, with healthy 7.1k-frame episodes. The catch is wall-clock cost: throughput dropped from ~500 fps to under 30 on the M5 GPU because every step now waits on a backprop pass, and the first attempt had to be restarted after the laptop slept mid-run. More learning per frame, much less learning per hour. On a fixed step budget it helps; on a fixed time budget train_freq=4 wins by a wide margin. _(rerun to full 500k in progress, final numbers to follow)_ |
+| 9 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1, **train_freq=1** | Best result of the entire study. A gradient update on every environment step (4x the baseline's update count) gave the cleanest learning curve seen in any run: -19.8 at 100k, -18.1 at 200k, -15.6 at 300k, -12.2 at 400k, final -8.45, with the last 20 training episodes averaging -0.3, essentially trading points evenly with the built-in AI. Best single episode +9. Under greedy evaluation (play.py, deterministic actions) it won 2 of 3 episodes outright: -3, +6, +7. The cost is wall-clock time: full training took 3h37m on the M5 GPU versus roughly 25 minutes for train_freq=4 at the same config, since every environment step now waits on a backprop pass instead of one in four. On a fixed compute budget train_freq=4 is the practical default, but when time allows, updating every step clearly extracts more signal from the same experience. This is now the group's submitted model (`dqn_model.zip`). |
 | 10 | lr=5e-5, gamma=0.99, batch=32, epsilon_start=1.0, epsilon_end=0.01, epsilon_decay=0.1, **train_freq=8** | The other half of the train_freq sweep: updating only every 8th step halves the total gradient updates (62.5k vs the baseline's 125k) and the agent pays for it. Very late breakout, -20.4 at 200k, -19.7 at 300k, crawling to -18.7 at cutoff with best episode -13 and the shortest average games of my runs (4.6k frames). Nothing diverged, it just learned half as much from the same experience. Together with exp 9 this brackets the axis: update frequency trades wall-clock time for sample efficiency, and the SB3 default of 4 sits in a sensible spot. |
 
 ## Results Discussion
@@ -151,14 +153,16 @@ added a nuance: at batch=64 the lr=1e-4 penalty mostly disappears, so lr
 sensitivity is partly a gradient-noise problem and bigger batches buy back
 some tolerance.
 
-**Batch size gave the single biggest improvement.** Going from 32 to 128
-(Leny exp 5) turned the group's best result from -13.9 into -10.2, with the
-study's first outright wins against the built-in AI (best episode +9, and +8
-in greedy evaluation). Averaging more transitions per update smooths the
-gradient, and on Apple Silicon the larger batch cost almost no extra wall
-time. Batch=16 (exp 6) confirmed the other direction: too noisy to make
-steady progress. The middle of the curve (64) ranked oddly below 32 on a
-single run, which we attribute to run-to-run variance rather than a real dip.
+**Batch size gave a big improvement, but update frequency gave a bigger one.**
+Going from 32 to 128 (Leny exp 5) turned the group's best result from -13.9
+into -10.2, with the study's first outright wins against the built-in AI
+(best episode +9, and +8 in greedy evaluation). Averaging more transitions
+per update smooths the gradient, and on Apple Silicon the larger batch cost
+almost no extra wall time. Batch=16 (exp 6) confirmed the other direction:
+too noisy to make steady progress. The middle of the curve (64) ranked oddly
+below 32 on a single run, which we attribute to run-to-run variance rather
+than a real dip. Exp 5 held the group record only briefly, though — see
+train_freq below, which beat it by nearly 2 points.
 
 **Gamma should match the game's reward delay.** Pong resolves each point
 within a few decisions, so 0.99 is comfortably enough horizon. Shortening it
@@ -174,23 +178,29 @@ floor caps the ceiling (-17.7), starting at 0.5 instead of 1.0 costs about 3
 points. The default schedule (1.0 to 0.01 over the first 10% of training) was
 never beaten.
 
-**Update frequency trades wall-clock for sample efficiency.** Updating every
-step (Leny exp 9) was ahead of the baseline at equal step counts but ran
-roughly 20x slower in real time; updating every 8th step (exp 10) halved the
-update count and clearly under-trained (-18.7). The SB3 default of 4 is a
-sensible compromise on both axes.
+**Update frequency turned out to matter more than any other single knob.**
+Updating the network on every environment step (Leny exp 9) produced the best
+result in the entire study: -8.45 mean reward, last-20-episode average -0.3,
+and 2 wins out of 3 under greedy evaluation. It was ahead of the baseline at
+every checkpoint along the way, not just at the end. Updating every 8th step
+(exp 10) went the other direction and clearly under-trained (-18.7). The cost
+of exp 9's win is wall-clock time, roughly 8x slower than the train_freq=4
+baseline (3h37m vs ~25 minutes) since every step now waits on a backprop
+pass. The SB3 default of 4 is the sensible choice under a fixed time budget;
+under a fixed step budget, train_freq=1 is worth the wait.
 
 **CNN vs MLP is not a close call.** MlpPolicy at the otherwise-best config
 (Elvis exp 9) stayed at random-play level for all 500k steps. Convolutions
 are what let the agent find the ball and paddles in pixel input; without that
 spatial prior there is nothing to tune.
 
-**Final configuration:** lr=5e-5, gamma=0.99, batch=128, epsilon 1.0 to 0.01
-over 10% of training, train_freq=4, CnnPolicy. Mean training reward -10.2 at
-500k steps, winning individual games under greedy evaluation. This is the
-model shipped as `dqn_model.zip`. Reward was still climbing at cutoff for
-every healthy run, so the clearest path to a stronger agent is simply more
-steps at this exact configuration.
+**Final configuration:** lr=5e-5, gamma=0.99, batch=32, epsilon 1.0 to 0.01
+over 10% of training, **train_freq=1**, CnnPolicy. Mean training reward -8.45
+at 500k steps, last-20-episode average -0.3, winning 2 of 3 games under
+greedy evaluation. This is the model shipped as `dqn_model.zip`. Reward was
+still climbing at cutoff for every healthy run, so the clearest path to a
+stronger agent is simply more steps, or combining this update frequency with
+the larger batch size from exp 5, which was never tested together.
 
 **Methodological caveat:** every cell in the tables is a single seed.
 Elvis's exp 10 reran the then-champion on a second seed and matched it almost
